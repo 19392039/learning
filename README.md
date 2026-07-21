@@ -54,12 +54,20 @@ FLASH_ATTN_BUILD_VERSION=v3 FLASH_ATTENTION_FORCE_BUILD=TRUE \
 离线环境：把修正版目录里的 `flash_attn_npu-0.2.0b1.tar.gz` 上传到服务器，
 校验 SHA256 后安装：
 
+> Windows 资源管理器如果启用了“隐藏已知文件类型的扩展名”，可能只显示为
+> `flash_attn_npu-0.2.0b1.tar`，因为最后的 `.gz` 被隐藏；文件的真实名称仍是
+> `flash_attn_npu-0.2.0b1.tar.gz`。可用 PowerShell
+> `Get-ChildItem -Name` 或服务器 `ls -l` 查看完整名称。
+
 ```bash
+ls -l flash_attn_npu-0.2.0b1.tar*
+file flash_attn_npu-0.2.0b1.tar*
 sha256sum flash_attn_npu-0.2.0b1.tar.gz
 # 期望：10660b8a043ecc018dc5ba439348d1ba4a5c789d472b69e890afd973320139ca
 
 mkdir -p /workspace/flash_attn_src
-tar -xzf flash_attn_npu-0.2.0b1.tar.gz -C /workspace/flash_attn_src
+# GNU tar 会按文件内容识别 gzip；-xf 不依赖资源管理器显示的扩展名。
+tar -xf flash_attn_npu-0.2.0b1.tar.gz -C /workspace/flash_attn_src
 cd /workspace/flash_attn_src/flash_attn_npu-0.2.0b1
 FLASH_ATTN_BUILD_VERSION=v3 FLASH_ATTENTION_FORCE_BUILD=TRUE \
   python -m pip install -v --no-build-isolation --no-deps .
