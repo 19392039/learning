@@ -1,0 +1,12 @@
+python: /opt/conda/envs/tf/bin/python
+version: 3.9.25
+FLASH_ATTN_NPU_REPO: /absolute/path/to/flash-attention-npu
+PYTHONPATH: /absolute/path/to/flash-attention-npu:/absolute/path/to/flash-attention-npu:/usr/local/Ascend/nnal/asdsip/latest/lib:/home/siplib/latest/lib:/usr/local/Ascend/cann-9.1.0/python/site-packages:/usr/local/Ascend/cann-9.1.0/opp/built-in/op_impl/ai_core/tbe:
+[ OK ] torch: /opt/conda/envs/tf/lib/python3.9/site-packages/torch/__init__.py
+[ OK ] torch_npu: /opt/conda/envs/tf/lib/python3.9/site-packages/torch_npu/__init__.py
+[ OK ] atk: /opt/conda/envs/tf/lib/python3.9/site-packages/atk/__init__.py
+[MISS] flash_attn_npu_v3
+[MISS] flash_attn_npu_3
+[FAIL] find_spec flash_attn_npu_v3.flash_attn_interface: ModuleNotFoundError: No module named 'flash_attn_npu_v3'
+[FAIL] import API: ModuleNotFoundError: No module named 'flash_attn_npu_v3'
+[FAIL] import extension: ModuleNotFoundError: No module named 'flash_attn_npu_3'
