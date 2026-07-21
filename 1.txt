@@ -51,3 +51,4 @@ print(flash_attn_func)
 
 cd /你的路径/flash_attn_npu_v3_atk_fixed
 python check_flash_attn_npu_v3_import.py
+python -m pip install flash-attn-npu==0.2.0b1
