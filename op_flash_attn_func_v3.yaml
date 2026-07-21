@@ -1,0 +1,110 @@
+# ATK design case for MinghuasLab/flash-attention-npu v3.
+# DUT output shape: [1, 128, 8, 64].
+api: pytorch
+api_type: flash_attn_npu_v3
+version: v3
+name: flash_attn_npu_v3.flash_attn_interface.flash_attn_func
+
+# One normal fp16 case, without ATK boundary/invalid tensor cases.
+dtype_numbers: 1
+extra_numbers: 0
+generate: default
+backward: false
+
+standard:
+  acc: single_bm
+  perf: not_key
+
+outputs: null
+
+inputs:
+  # q: [batch, seqlen_q, nheads_q, headdim]
+  - name: null
+    type: tensor
+    required: true
+    backward: false
+    dtypes:
+      values: [fp16]
+    ranges:
+      valid:
+        values: [[-1.0, 1.0]]
+    shapes:
+      dim_numbers:
+        values: [4]
+      dim_values:
+        - values: [1]
+        - values: [128]
+        - values: [8]
+        - values: [64]
+      # Must be greater than numel. A large value also prevents ATK's
+      # global shape-distribution processor from rewriting this fixed case.
+      max_length: 100000000
+    boundary:
+      has_empty: false
+      has_infnan: false
+      has_scalar: false
+      has_upper_border: false
+      has_lower_border: false
+
+  # k: [batch, seqlen_k, nheads_k, headdim]
+  - name: null
+    type: tensor
+    required: true
+    backward: false
+    dtypes:
+      values: [fp16]
+    ranges:
+      valid:
+        values: [[-1.0, 1.0]]
+    shapes:
+      dim_numbers:
+        values: [4]
+      dim_values:
+        - values: [1]
+        - values: [128]
+        - values: [8]
+        - values: [64]
+      max_length: 100000000
+    boundary:
+      has_empty: false
+      has_infnan: false
+      has_scalar: false
+      has_upper_border: false
+      has_lower_border: false
+
+  # v: [batch, seqlen_k, nheads_k, headdim_v]
+  - name: null
+    type: tensor
+    required: true
+    backward: false
+    dtypes:
+      values: [fp16]
+    ranges:
+      valid:
+        values: [[-1.0, 1.0]]
+    shapes:
+      dim_numbers:
+        values: [4]
+      dim_values:
+        - values: [1]
+        - values: [128]
+        - values: [8]
+        - values: [64]
+      max_length: 100000000
+    boundary:
+      has_empty: false
+      has_infnan: false
+      has_scalar: false
+      has_upper_border: false
+      has_lower_border: false
+
+  # Force the same scenario as the requested test: causal=True.
+  - name: causal
+    type: attr
+    required: true
+    backward: false
+    dtypes:
+      values: [attr_bool]
+    ranges:
+      valid:
+        values: [true]
