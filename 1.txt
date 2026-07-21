@@ -10,3 +10,44 @@ PYTHONPATH: /absolute/path/to/flash-attention-npu:/absolute/path/to/flash-attent
 [FAIL] find_spec flash_attn_npu_v3.flash_attn_interface: ModuleNotFoundError: No module named 'flash_attn_npu_v3'
 [FAIL] import API: ModuleNotFoundError: No module named 'flash_attn_npu_v3'
 [FAIL] import extension: ModuleNotFoundError: No module named 'flash_attn_npu_3'
+
+
+find /home /workspace /root -maxdepth 5 \
+  -type d -name flash-attention-npu 2>/dev/null
+
+cd 上面的
+
+test -f flash_attn_npu_v3/flash_attn_interface.py
+
+export FLASH_ATTN_NPU_REPO="$(pwd)"
+export PYTHONPATH="$FLASH_ATTN_NPU_REPO:$PYTHONPATH"
+
+ which python
+# 应为 /opt/conda/envs/tf/bin/python
+
+cd "$FLASH_ATTN_NPU_REPO"
+
+git submodule update --init --recursive
+
+FLASH_ATTN_BUILD_VERSION=v3 \
+FLASH_ATTENTION_FORCE_BUILD=TRUE \
+python -m pip install -v --no-build-isolation --no-deps .
+
+python -c "
+import flash_attn_npu_v3
+print(flash_attn_npu_v3.__file__)
+"
+
+python -c "
+import flash_attn_npu_3 as m
+print(m.__file__)
+print('fwd:', hasattr(m, 'fwd'))
+"
+
+python -c "
+from flash_attn_npu_v3.flash_attn_interface import flash_attn_func
+print(flash_attn_func)
+"
+
+cd /你的路径/flash_attn_npu_v3_atk_fixed
+python check_flash_attn_npu_v3_import.py
