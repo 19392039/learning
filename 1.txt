@@ -1,54 +1,39 @@
-python: /opt/conda/envs/tf/bin/python
-version: 3.9.25
-FLASH_ATTN_NPU_REPO: /absolute/path/to/flash-attention-npu
-PYTHONPATH: /absolute/path/to/flash-attention-npu:/absolute/path/to/flash-attention-npu:/usr/local/Ascend/nnal/asdsip/latest/lib:/home/siplib/latest/lib:/usr/local/Ascend/cann-9.1.0/python/site-packages:/usr/local/Ascend/cann-9.1.0/opp/built-in/op_impl/ai_core/tbe:
-[ OK ] torch: /opt/conda/envs/tf/lib/python3.9/site-packages/torch/__init__.py
-[ OK ] torch_npu: /opt/conda/envs/tf/lib/python3.9/site-packages/torch_npu/__init__.py
-[ OK ] atk: /opt/conda/envs/tf/lib/python3.9/site-packages/atk/__init__.py
-[MISS] flash_attn_npu_v3
-[MISS] flash_attn_npu_3
-[FAIL] find_spec flash_attn_npu_v3.flash_attn_interface: ModuleNotFoundError: No module named 'flash_attn_npu_v3'
-[FAIL] import API: ModuleNotFoundError: No module named 'flash_attn_npu_v3'
-[FAIL] import extension: ModuleNotFoundError: No module named 'flash_attn_npu_3'
-
-
-find /home /workspace /root -maxdepth 5 \
-  -type d -name flash-attention-npu 2>/dev/null
-
-cd 上面的
-
-test -f flash_attn_npu_v3/flash_attn_interface.py
-
-export FLASH_ATTN_NPU_REPO="$(pwd)"
-export PYTHONPATH="$FLASH_ATTN_NPU_REPO:$PYTHONPATH"
-
- which python
-# 应为 /opt/conda/envs/tf/bin/python
-
-cd "$FLASH_ATTN_NPU_REPO"
-
-git submodule update --init --recursive
-
-FLASH_ATTN_BUILD_VERSION=v3 \
-FLASH_ATTENTION_FORCE_BUILD=TRUE \
-python -m pip install -v --no-build-isolation --no-deps .
-
-python -c "
-import flash_attn_npu_v3
-print(flash_attn_npu_v3.__file__)
-"
-
-python -c "
-import flash_attn_npu_3 as m
-print(m.__file__)
-print('fwd:', hasattr(m, 'fwd'))
-"
-
-python -c "
-from flash_attn_npu_v3.flash_attn_interface import flash_attn_func
-print(flash_attn_func)
-"
-
-cd /你的路径/flash_attn_npu_v3_atk_fixed
-python check_flash_attn_npu_v3_import.py
-python -m pip install flash-attn-npu==0.2.0b1
+(tf) root@8856b8f20c89:/autotest/flash-linear-attention-npu/fla/ops/ascendc/gdn/chunk_gdn_bwd/chunk_bwd_dqkwg/tests/ATK# atk case -f aclnn_chunk_bwd_dqkwg.yaml -p generator_chunk_bwd_dqkwg.py --seed 1234
+[2026-07-24 03:57:19] [INFO] [MainProcess] [17320] [registry.py:94]  generator_chunk_bwd_dqkwg is already registered, repeated registration will coverage it, new module path is generator_chunk_bwd_dqkwg
+Traceback (most recent call last):
+  File "/opt/conda/envs/tf/bin/atk", line 7, in <module>
+    sys.exit(main())
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/__main__.py", line 17, in main
+    sys.exit(cli())
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/click/core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/click/core.py", line 1082, in main
+    rv = self.invoke(ctx)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/click/core.py", line 1728, in invoke
+    rv.append(sub_ctx.command.invoke(sub_ctx))
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/click/core.py", line 1443, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/click/core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/click/decorators.py", line 33, in new_func
+    return f(get_current_context(), *args, **kwargs)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/bin/case.py", line 125, in cli
+    report = Reports(args)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/utils/reports.py", line 185, in __init__
+    self._generate_case()
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/utils/reports.py", line 338, in _generate_case
+    for index, case in enumerate(input_gen):
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/generator/base_generator.py", line 47, in __next__
+    return self.generate()
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/generator/base_generator.py", line 153, in generate
+    self.process_shape_restrict(all_inputs, inputs, method_inputs, tensor_case)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/generator/base_generator.py", line 93, in process_shape_restrict
+    case = self.gens[i].__next__()
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/generator/parameter_types/parameter_base.py", line 32, in __next__
+    case = self.generate_with_index(self.index)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/generator/parameter_types/parameter_tensor.py", line 147, in generate_with_index
+    shape = self.get_shapes_by_dim(dim, dtype)
+  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/case_generator/generator/parameter_types/parameter_tensor.py", line 135, in get_shapes_by_dim
+    raise RuntimeError(
+RuntimeError: Failed to resolve shape within 300s. Current shape_elements: 1, dtype: fp16.max_length: 2 need to be adjusted.Possible infinite loop in get_shape().
+[ERROR] 2026-07-24-04:02:20 (PID:17320, Device:-1, RankID:-1) ERR99999 UNKNOWN applicaiton exception
