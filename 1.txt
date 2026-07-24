@@ -1,58 +1,78 @@
-[2026-07-24 07:10:53] [ERROR] [127.0.0.1:9090@device_run_0] [19826] [trace.py:267]  Task atk.tasks.celery_tasks.celery_run_aclnn_task[728c51a9-8fcf-484d-85a4-e50ace484529] raised unexpected: RuntimeError('run opp task failed!')
-Traceback (most recent call last):
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/opp_tasks.py", line 241, in run_opp_case
-    ret, output_info_list = opp_executor.run_opp_case()
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/common/utils.py", line 108, in wrapper
-    result = func(*args, **kwargs)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/executors/opp_executor.py", line 74, in run_opp_case
-    output_info = self._execute_accuracy_tasks()
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/executors/opp_executor.py", line 526, in _execute_accuracy_tasks
-    output, output_info = self.run_accuracy(clean=False)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/common/utils.py", line 108, in wrapper
-    result = func(*args, **kwargs)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/executors/opp_executor.py", line 93, in run_accuracy
-    output_data = self.backend.run_accuracy(self.is_backward)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/backends/pyaclnn_backend.py", line 505, in run_accuracy
-    self.synchronize()
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/backends/pyaclnn_backend.py", line 451, in synchronize
-    ascendcl.aclrtSynchronizeStream(self.stream)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/backends/lib_interface/acl_wrapper.py", line 254, in wrapper
-    raise ACLRuntimeError(f"ctypes aclnn function '{name}' failed! error code: {result.value}")
-atk.tasks.backends.lib_interface.acl_wrapper.ACLRuntimeError: 
-ctypes aclnn function 'aclrtSynchronizeStream' failed! error code: 507015
-ACL Error Details:
-EZ9999: Inner Error!
-EZ9999[PID: 19826] 2026-07-24-07:10:53.049.963 (EZ9999):  The error from device(chipId:1, dieId:0), serial number is 12, there is an exception of fftsplus aicore error, core id is 17, error code = 0, dump info: pc start: 0x12c0416f36d8, current: 0x12c0416f424c, vec error info: 0, mte error info: 0xfeff2ebf81, ifu error info: 0x212c402210e00, ccu error info: 0x880012f00000000, cube error info: 0, biu error info: 0, aic error mask: 0x6500020bd00028c, para base: 0x12c100000080, aic cond: 0.
-The extend info: errcode:(0, 0x8000, 0) errorStr: The scalar instruction accesses an invalid GM address or the cross-device memory access times out. fixp_error0 info: 0xf2ebf81, fixp_error1 info: 0xfe, fsmId:0, tslot:0, thread:0, ctxid:0, blk:0, sublk:0, subErrType:4.
-For details, see the troubleshooting document on the Ascend official website. Search for the keyword "AI Core Error".[FUNC:PrintCoreInfo][FILE:device_error_core_proc.cc][LINE:1095]
-TraceBack (most recent call last):
-The error from device(chipId:1, dieId:0), serial number is 13, there is an exception of fftsplus aivector error, core id is 9, error code = 0, dump info: pc start: 0x12c0416fb980, current: 0x12c0416fc178, vec error info: 0xc102b5a6d4, mte error info: 0x95060000ad, ifu error info: 0x212c402210e00, ccu error info: 0x7319f93100000000, cube error info: 0, biu error info: 0, aic error mask: 0x6500020bd00028c, para base: 0x12c100000080, aic cond: 0.
-The extend info: errcode:(0, 0x8000, 0) errorStr: The scalar instruction accesses an invalid GM address or the cross-device memory access times out. fixp_error0 info: 0x60000ad, fixp_error1 info: 0x95, fsmId:0, tslot:0, thread:0, ctxid:0, blk:0, sublk:0, subErrType:4.
-For details, see the troubleshooting document on the Ascend official website. Search for the keyword "AI Core Error".[FUNC:PrintCoreInfo][FILE:device_error_core_proc.cc][LINE:1095]
-An error occurred in the kernel task, retCode=0x26, [aicore exception].[FUNC:PreCheckTaskErr][FILE:davinci_kernel_task.cc][LINE:1262]
-rtStreamSynchronize execution failed, reason=aicore exception[FUNC:FuncErrorReason][FILE:error_message_manage.cc][LINE:69]
+代码中最可疑的直接原因
+最高嫌疑是 Vector Part 4 的 TQue 数据类型不一致。
+在 [chunk_bwd_dqkwg_vector.h (line 832)](C:/Users/qs/Documents/Codex/2026-07-24/https-github-com-flashserve-flash-linear/work/flash-linear-attention-npu-26.6.0/fla/ops/ascendc/gdn/chunk_gdn_bwd/chunk_bwd_dqkwg/op_kernel/chunk_bwd_dqkwg_vector.h:832) 中：
+pipe->InitBuffer(outQue2, BUFFER_NUM, gSize * sizeof(float));
+后面按照 float 分配、入队：
+auto tensorDgOut = outQue2.AllocTensor<float>();   // line 913
+...
+outQue2.EnQue(tensorDgOut);                        // line 978
+但出队时却使用 GType：
+auto tensorDgOut = outQue2.DeQue<GType>();         // line 983
+case 3 中：
+GType = half
+也就是同一个队列：
+AllocTensor<float>
+EnQue<float>
+DeQue<half>
+这属于明显的类型合同不一致。中间还把 float buffer 原地 cast 到：
+tensorDgOut.ReinterpretCast<GType>()
+这可能导致：
+TQue 对 buffer 长度/element count 的解释不一致；
+出队 LocalTensor 的地址范围或长度错误；
+后续 DataCopyPad 从错误的 LocalTensor 视图写入 gmDg；
+AIV 首先出现 MTE/GM 异常；
+AIC 因等待 AIV 的 CrossCore flag 而同时出现超时类异常。
+手写 JSON 使用的是 g=fp32，此时 GType=float，上述问题被掩盖：
+AllocTensor<float>
+DeQue<float>
+这非常符合“手写 fp32 gate JSON 能过，同精度 fp16 gate 用例触发设备异常”的现象。
+其他高风险代码
+1. Workspace 被多个阶段复用
+同一文件中：
+gmMm6.SetGlobalBuffer(workspace + wsMm5Offset);
+gmMm7.SetGlobalBuffer(workspace + wsMm5Offset);
+也就是说 mm5/mm6/mm7 复用同一段 workspace。
+needReduce == 0 时又有：
+gmMul1.SetGlobalBuffer((__gm__ DataType *)ptrDq);
+即把最终输出 dq 当成 Part 2 的临时 workspace。
+这些别名只有在所有 SyncAll 和 AIC/AIV CrossCore flag 完全正确时才安全。case 3 会启动16个 block，相比手写用例的2个 block，更容易暴露阶段不同步或某个 AIV 提前异常的问题。
+2. 另一个 TQue 释放类型不一致
+Part 3 中：
+auto tensorMul1InFp16 = inQue2.DeQue<DataType>();
+auto tensorMul1InFp32 =
+    tensorMul1InFp16.ReinterpretCast<float>();
 
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/opp_tasks.py", line 290, in run_opp_task
-    run_opp_case(dataset_executor, task_result)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/opp_tasks.py", line 248, in run_opp_case
-    raise ATKRuntimeError("case %s run opp case failed: %s", task_result.case_config.id) from e
-atk.tasks.backends.backend.ATKRuntimeError: ('case %s run opp case failed: %s', 3)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/celery/app/trace.py", line 453, in trace_task
-    R = retval = fun(*args, **kwargs)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/celery/app/trace.py", line 736, in __protected_call__
-    return self.run(*args, **kwargs)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/celery_tasks.py", line 40, in celery_run_aclnn_task
-    return run_aclnn_task(task_result_json, self_result_json)
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/opp_tasks.py", line 356, in run_aclnn_task
-    return run_opp_task(aclnn_task_result.model_dump())
-  File "/opt/conda/envs/tf/lib/python3.9/site-packages/atk/tasks/opp_tasks.py", line 303, in run_opp_task
-    raise RuntimeError("run opp task failed!") from run_exec
-RuntimeError: run opp task failed!
+inQue2.FreeTensor(tensorMul1InFp32);  // line 710
+分配和出队类型是 DataType，释放的却是 reinterpret 后的 float view。这里同样可能破坏队列/UB buffer 的管理状态。
+3. 唯一明确的 fixed-mode 标量 GM 读取
+日志明确提到 scalar GM access。fixed 模式中最值得检查的是：
+float dgLast = gmDgLast.GetValue(dgLastOffset);
+位于同一文件第1200行。
+对 case 3，理论上：
+dgLastOffset = 0..63
+dgLast workspace = 64 × sizeof(float) = 256 bytes
+地址计算本身没有越界。因此如果 PC 最终映射到这条指令，更可能说明：
+workspace 基址不正确；
+tiling data 与 kernel 二进制版本不一致；
+前面的 TQue/同步异常破坏了执行状态；
+host 和 kernel 使用了不同版本的 tiling struct。
+4. Host 完全没有参数保护
+[aclnn_chunk_bwd_dqkwg.cpp (line 76)](C:/Users/qs/Documents/Codex/2026-07-24/https-github-com-flashserve-flash-linear/work/flash-linear-attention-npu-26.6.0/fla/ops/ascendc/gdn/chunk_gdn_bwd/chunk_bwd_dqkwg/op_host/op_api/aclnn_chunk_bwd_dqkwg.cpp:76) 中：
+CheckFormat() -> ACLNN_SUCCESS
+CheckShape()  -> ACLNN_SUCCESS
+CheckDtype()  -> ACLNN_SUCCESS
+因此即使输入、输出或已安装 OPP 的 dtype/shape 合同不一致，host 也不会拒绝，而是直接把指针交给 kernel，最终表现就是507015。
+可以排除的原因
+我按 case 3 计算了所有主要张量和 workspace 边界：
+numChunks       = 16
+blockDim        = 16
+dgLast          = 256 bytes
+mm5/mm6/mm7区   = 1,048,576 bytes
+dsTemp          = 524,288 bytes
+总user workspace = 1,573,120 bytes
+q/k/v/do/dv、h/dh、dq/dk/dw 的最后一个 chunk、最后一个 head 的结束地址都没有超过对应分配大小。
+因此没有证据表明这是 generator 产生了普通 shape 越界。更像是：
+GType != float 路径中的 TQue 类型错误；
+AIV 异常后引发 AIC 跨核等待异常；
+workspace/output 高度复用使问题在多 block 下被放大。
+仅凭未符号化的 current PC 不能把错误百分之百映射到某一行，但从代码审查和 case 差异看，ProcessPart4 的 EnQue<float> → DeQue<half> 是最直接、最有针对性的开发缺陷。
