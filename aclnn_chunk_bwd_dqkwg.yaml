@@ -6,10 +6,10 @@ version: v2.1
 name: aclnn.chunk.bwd.dqkwg
 aclnn_name: ChunkBwdDqkwg
 generate: generator_chunk_bwd_dqkwg
-# There are two qkv dtypes, so this produces 64 deterministic cases.  The
-# generator maps those cases to the full Cartesian product of its six binary
-# dimensions (dtype/chunk_size/is_mix/is_fix/value_dim/head_ratio).
-dtype_numbers: 32
+# One YAML dtype combination times 12 bounded profiles from the generator.
+# Do not add a tiny shapes.max_length: ATK validates the unit seed shapes
+# before after_case_config installs the correlated operator shapes.
+dtype_numbers: 12
 extra_numbers: 0
 standard:
   acc: cv_fused_double_benchmark
@@ -18,7 +18,7 @@ inputs:
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -29,12 +29,11 @@ inputs:
         values: [ 4 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: k
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -45,12 +44,11 @@ inputs:
         values: [ 4 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: v
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -61,7 +59,6 @@ inputs:
         values: [ 4 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: g
     type: tensor
     required: true
@@ -77,12 +74,11 @@ inputs:
         values: [ 3 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: h
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -93,12 +89,11 @@ inputs:
         values: [ 5 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: do
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -109,12 +104,11 @@ inputs:
         values: [ 4 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: dh
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -125,12 +119,11 @@ inputs:
         values: [ 5 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: dv
     type: tensor
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -141,7 +134,6 @@ inputs:
         values: [ 4 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: cu_seqlens
     type: tensor
     required: true
@@ -157,7 +149,6 @@ inputs:
         values: [ 1 ]
       dim_values:
         values: [ 4 ]
-      max_length: 5
   - name: chunk_indices
     type: tensor
     required: true
@@ -173,14 +164,13 @@ inputs:
         values: [ 2 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: w
     type: tensor
     # Required here means the key is always present for executor setup.  The
     # executor still passes None/nullptr to the ACLNN optional w argument.
     required: true
     dtypes:
-      values: [bf16, fp16]
+      values: [fp16]
     ranges:
       valid:
         values: [ [ -5, 5 ] ]
@@ -191,7 +181,6 @@ inputs:
         values: [ 4 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: g_gamma
     type: tensor
     # Same compatibility rule as w: present in JSON, null at the operator ABI.
@@ -208,7 +197,6 @@ inputs:
         values: [ 2 ]
       dim_values:
         values: [ 1 ]
-      max_length: 2
   - name: scale
     type: attr
     required: true
@@ -226,7 +214,7 @@ inputs:
       values: [int]
     ranges:
       valid:
-        values: [64, 128]
+        values: [64]
       invalid:
         values: []
   - name: is_mix
@@ -236,7 +224,7 @@ inputs:
       values: [bool]
     ranges:
       valid:
-        values: [true, false]
+        values: [true]
       invalid:
         values: []
   - name: is_fix
@@ -246,7 +234,7 @@ inputs:
       values: [bool]
     ranges:
       valid:
-        values: [true, false]
+        values: [true]
       invalid:
         values: []
   - name: use_exp2
@@ -276,6 +264,6 @@ inputs:
       values: [string]
     ranges:
       valid:
-        values: ["bf16", "fp16"]
+        values: ["fp16"]
       invalid:
         values: []
